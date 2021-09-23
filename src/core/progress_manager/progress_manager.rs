@@ -3,7 +3,7 @@ use crate::components::{Component, ProgressBar};
 use std::io::Write;
 
 pub struct ProgressManager {
-    pub bar: ProgressBar
+    pub bar: ProgressBar,
 }
 
 impl ProgressManager {
