@@ -1,10 +1,11 @@
+mod component;
 mod progress_bar;
-mod spinner;
 mod timer;
+mod label;
+mod group;
 
-pub trait Component {
-    fn draw(&self, progress: u32, total: u32) -> String;
-}
 
+pub use component::Component;
 pub use progress_bar::{ProgressBar, ProgressBarBuilder};
-pub use spinner::SpinnerComponent;
+pub use label::Label;
+pub use group::LabeledProgressBar;

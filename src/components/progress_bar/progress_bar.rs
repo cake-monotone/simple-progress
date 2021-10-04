@@ -1,16 +1,19 @@
-use super::ProgressBarConfig;
-
+use super::Config;
 use crate::components::Component;
+
 use std::convert::TryFrom;
 use unicode_width::UnicodeWidthChar;
 
 pub struct ProgressBar {
-    config: ProgressBarConfig,
+    config: Config,
 }
 
 pub struct ProgressBarBuilder {
-    config: ProgressBarConfig,
+    config: Config,
 }
+
+#[derive(Debug)]
+pub struct ProgressBarBuildError;
 
 impl ProgressBar {
     pub fn new() -> Self {
@@ -23,15 +26,19 @@ impl ProgressBar {
 }
 
 impl Component for ProgressBar {
+    fn height(&self) -> u16 {
+        1u16
+    }
+
     fn draw(&self, progress: u32, total: u32) -> String {
         let config = self.config;
 
         // processed_length = (progress * bar_length) / total
         // note that 0 <= processed_length <= bar_length(u16)
-        let processed_len = (progress as u64 * config.bar_len as u64)
+        let processed_len = (progress as u64 * config.bar_width as u64)
             .checked_div(total as u64)
             .and_then(|x| {
-                if x > (config.bar_len as u64) {
+                if x > (config.bar_width as u64) {
                     None
                 } else {
                     Some(u16::try_from(x).unwrap())
@@ -58,20 +65,20 @@ impl Component for ProgressBar {
 
                 // draw status: [=>
                 if let Some(arrow) = config.arrow {
-                    if processed_len != config.bar_len && processed_len >= body_char_width {
+                    if processed_len != config.bar_width && processed_len >= body_char_width {
                         s.pop();
                         s.push(arrow);
                     }
                 }
 
                 // draw status: [=>*
-                for _ in (0..(config.bar_len - drawed_len)).step_by(body_char_width as usize) {
+                for _ in (0..(config.bar_width - drawed_len)).step_by(body_char_width as usize) {
                     s.push(config.empty);
                 }
             }
             None => {
                 // draw status: [???
-                for _ in (0..config.bar_len).step_by(body_char_width as usize) {
+                for _ in (0..config.bar_width).step_by(body_char_width as usize) {
                     s.push(config.error);
                 }
             }
@@ -87,22 +94,16 @@ impl Component for ProgressBar {
 }
 
 impl ProgressBarBuilder {
-    const DEFAULT_EMPTY_CHAR: char = ' ';
-    const DEFAULT_ERROR_CHAR: char = '!';
-
-    const DEFAULT_FULL_WIDTH_EMPTY_CHAR: char = '　';
-    const DEFAULT_FULL_WIDTH_ERROR_CHAR: char = '！';
-
     pub fn new() -> Self {
         ProgressBarBuilder {
-            config: ProgressBarConfig {
+            config: Config {
                 filled: '=',
                 empty: ' ',
                 arrow: Some('>'),
                 left_border: Some('['),
                 right_border: Some(']'),
                 error: '?',
-                bar_len: 16u16,
+                bar_width: 16u16,
             },
         }
     }
@@ -117,15 +118,25 @@ impl ProgressBarBuilder {
         self
     }
 
-    pub fn set_border(&mut self, left: char, right: char) -> &mut Self {
-        self.config.left_border = Some(left);
-        self.config.right_border = Some(right);
+    pub fn set_arrow(&mut self, ch: Option<char>) -> &mut Self {
+        self.config.arrow = ch;
         self
     }
 
-    // TODO: builder complete
+    pub fn set_border(&mut self, left: Option<char>, right: Option<char>) -> &mut Self {
+        self.config.left_border = left;
+        self.config.right_border = right;
+        self
+    }
+
+    pub fn set_bar_width(&mut self, bar_width: u16) -> &mut Self {
+        self.config.bar_width = bar_width;
+        self
+    }
 
     pub fn build(&self) -> ProgressBar {
+        self.config.check_invalid_chars().unwrap();
+
         ProgressBar {
             config: self.config,
         }
@@ -147,14 +158,14 @@ mod test {
         #[test]
         fn test_draw() {
             let progress_bar = ProgressBar {
-                config: ProgressBarConfig {
+                config: Config {
                     filled: '=',
                     empty: ' ',
                     arrow: Some('>'),
                     left_border: Some('['),
                     right_border: Some(']'),
                     error: '?',
-                    bar_len: 3,
+                    bar_width: 3,
                 },
             };
 
@@ -169,14 +180,14 @@ mod test {
             assert_eq!(progress_bar.draw(1, 3), progress_bar.draw(3, 9));
 
             let full_width_char_progress_bar = ProgressBar {
-                config: ProgressBarConfig {
+                config: Config {
                     filled: '～',
                     empty: '　',
                     arrow: None,
                     left_border: None,
                     right_border: None,
                     error: '！',
-                    bar_len: 6,
+                    bar_width: 6,
                 },
             };
 
