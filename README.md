@@ -1,4 +1,4 @@
 # your-progress
 (WIP) progress bar for rust
 
-![gif of progress bar(WIP)](img/WIP-09-22.gif)
+![gif of progress bar(WIP)](img/WIP-10-04.gif)
